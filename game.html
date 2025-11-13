@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pro Club Manager 2025 - Expanded Edition</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #1a202c;
+            --accent: #38b2ac;
+            --secondary: #2d3748;
+            --text-light: #e2e8f0;
+            --pitch-green: #2f855a;
+        }
+        body {
+            background-color: #121212;
+            color: var(--text-light);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow-x: hidden;
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #1a202c; }
+        ::-webkit-scrollbar-thumb { background: #4a5568; border-radius: 3px; }
+        
+        .stat-card {
+            background: linear-gradient(145deg, #1e293b, #0f172a);
+            border: 1px solid #334155;
+        }
+        .player-row:hover { background-color: #2d3748; cursor: pointer; }
+        .btn-action { transition: all 0.2s; }
+        .btn-action:active { transform: scale(0.95); }
+        
+        .modal {
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(5px);
+        }
+
+        /* News Ticker Animation */
+        .news-item { animation: fadeIn 0.5s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="h-screen flex flex-col">
+
+    <!-- TOP BAR -->
+    <header class="bg-slate-900 border-b border-slate-700 p-3 flex justify-between items-center sticky top-0 z-20 shadow-lg">
+        <div class="flex items-center gap-3">
+            <div id="club-logo" class="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center font-bold text-white">MC</div>
+            <div>
+                <h1 id="club-name" class="font-bold text-sm md:text-lg">Man City</h1>
+                <div class="text-xs text-slate-400" id="current-date">Aug 10, 2025</div>
+            </div>
+        </div>
+        <div class="flex gap-4 text-sm font-mono">
+            <div class="text-green-400 flex items-center gap-1">
+                <i class="fas fa-coins"></i>
+                <span id="budget-display">£150M</span>
+            </div>
+            <div class="text-yellow-400 flex items-center gap-1 hidden md:flex" title="Board Confidence">
+                <i class="fas fa-chart-line"></i>
+                <span id="board-trust-top">95%</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT AREA -->
+    <main id="app-container" class="flex-1 overflow-y-auto p-4 pb-24 max-w-5xl mx-auto w-full relative">
+        
+        <!-- VIEW: DASHBOARD -->
+        <div id="view-dashboard" class="space-y-4">
+            <!-- Next Match Banner -->
+            <div class="stat-card rounded-xl p-5 shadow-lg border-l-4 border-blue-500 relative overflow-hidden">
+                <div class="absolute right-0 top-0 opacity-10 text-9xl transform translate-x-10 -translate-y-10">
+                    <i class="fas fa-futbol"></i>
+                </div>
+                <h2 class="text-slate-400 text-xs uppercase tracking-wider mb-2" id="fixture-type-label">Next Fixture</h2>
+                <div class="flex justify-between items-center">
+                    <div class="text-center w-1/3">
+                        <div class="text-xl md:text-2xl font-bold truncate" id="home-team-name">Man City</div>
+                        <div class="text-xs text-slate-400">Home</div>
+                    </div>
+                    <div class="text-xl font-bold text-slate-500">VS</div>
+                    <div class="text-center w-1/3">
+                        <div class="text-xl md:text-2xl font-bold truncate" id="away-team-name">Arsenal</div>
+                        <div class="text-xs text-slate-400">Away</div>
+                    </div>
+                </div>
+                <button onclick="game.simMatch()" class="mt-4 w-full bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-lg font-bold shadow-lg btn-action">
+                    SIMULATE MATCH
+                </button>
+            </div>
+
+            <!-- News Feed (New Feature) -->
+            <div class="stat-card rounded-lg p-4">
+                <h3 class="font-bold border-b border-slate-700 pb-2 mb-2 flex items-center gap-2">
+                    <i class="fas fa-newspaper text-slate-400"></i> News Feed
+                </h3>
+                <div id="news-feed" class="space-y-3 max-h-40 overflow-y-auto text-sm">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+
+            <!-- League Table Snippet -->
+            <div class="stat-card rounded-lg p-4">
+                <h3 class="font-bold border-b border-slate-700 pb-2 mb-2 flex justify-between">
+                    <span>Standings</span>
+                    <button onclick="ui.navigate('league')" class="text-xs text-blue-400">View All</button>
+                </h3>
+                <table class="w-full text-sm text-left">
+                    <thead><tr class="text-slate-500"><th class="p-1">#</th><th class="p-1">Club</th><th class="p-1 text-right">Pts</th></tr></thead>
+                    <tbody id="dashboard-table-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- VIEW: SQUAD -->
+        <div id="view-squad" class="hidden space-y-4">
+            <div class="flex justify-between items-center">
+                <h2 class="text-xl font-bold">Squad Management</h2>
+                <div class="text-xs text-slate-400">Drag/Click to swap</div>
+            </div>
+            
+            <div class="bg-green-900/20 border border-green-800 rounded-xl p-4 relative overflow-hidden">
+                <h3 class="text-green-400 text-sm font-bold mb-2 uppercase">Starting XI</h3>
+                <div id="starting-xi-list" class="space-y-2"></div>
+            </div>
+
+            <div class="stat-card rounded-xl p-4">
+                <h3 class="text-slate-400 text-sm font-bold mb-2 uppercase">Bench & Reserves</h3>
+                <div id="bench-list" class="space-y-2 max-h-64 overflow-y-auto"></div>
+            </div>
+        </div>
+
+        <!-- VIEW: LEAGUE & STATS -->
+        <div id="view-league" class="hidden space-y-4">
+            <div class="flex gap-4 border-b border-slate-700 pb-2">
+                <button onclick="ui.toggleLeagueTab('table')" id="tab-btn-table" class="font-bold text-white">Table</button>
+                <button onclick="ui.toggleLeagueTab('stats')" id="tab-btn-stats" class="text-slate-400 hover:text-white">Player Stats</button>
+            </div>
+
+            <div id="tab-league-table">
+                <div class="stat-card rounded-lg overflow-hidden">
+                    <table class="w-full text-sm">
+                        <thead class="bg-slate-800 text-slate-400">
+                            <tr>
+                                <th class="p-3 text-left">Pos</th>
+                                <th class="p-3 text-left">Club</th>
+                                <th class="p-3 text-center">P</th>
+                                <th class="p-3 text-center">GD</th>
+                                <th class="p-3 text-center font-bold text-white">Pts</th>
+                            </tr>
+                        </thead>
+                        <tbody id="full-league-table" class="divide-y divide-slate-700"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="tab-league-stats" class="hidden">
+                <h3 class="text-yellow-400 font-bold mb-2">Golden Boot Race</h3>
+                <div class="stat-card rounded-lg overflow-hidden mb-4">
+                    <table class="w-full text-sm">
+                        <thead class="bg-slate-800 text-slate-400">
+                            <tr><th class="p-3 text-left">Player</th><th class="p-3 text-left">Club</th><th class="p-3 text-right font-bold">Goals</th></tr>
+                        </thead>
+                        <tbody id="top-scorers-table" class="divide-y divide-slate-700"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW: OFFICE (Staff & Board) -->
+        <div id="view-office" class="hidden space-y-4">
+             <h2 class="text-xl font-bold">Manager's Office</h2>
+             
+             <!-- Board Confidence (Feature 10) -->
+             <div class="stat-card p-4 rounded-lg border-l-4" id="board-confidence-card">
+                <h3 class="text-slate-400 text-xs uppercase mb-2">Board Confidence</h3>
+                <div class="flex items-end gap-2">
+                    <div class="text-4xl font-bold text-white" id="office-confidence">95%</div>
+                    <div class="text-sm mb-1" id="confidence-text">Secure</div>
+                </div>
+                <div class="w-full bg-slate-700 h-2 rounded-full mt-2">
+                    <div id="confidence-bar" class="bg-green-500 h-2 rounded-full" style="width: 95%"></div>
+                </div>
+                <p class="text-xs text-slate-500 mt-2">If confidence drops below 20%, you risk termination.</p>
+             </div>
+
+             <!-- Staff Management (Feature 4) -->
+             <div class="stat-card p-4 rounded-lg">
+                <h3 class="text-slate-400 text-xs uppercase mb-2 border-b border-slate-700 pb-1">Staff Room</h3>
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <div class="font-bold">Head Coach</div>
+                            <div class="text-xs text-slate-400">Improves training & form recovery</div>
+                        </div>
+                        <button onclick="game.hireStaff('coach')" class="bg-blue-600 text-xs px-3 py-1 rounded hover:bg-blue-500" id="btn-hire-coach">Hire (£500k)</button>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <div class="font-bold">Chief Scout</div>
+                            <div class="text-xs text-slate-400">Reveals exact potentials</div>
+                        </div>
+                        <button onclick="game.hireStaff('scout')" class="bg-blue-600 text-xs px-3 py-1 rounded hover:bg-blue-500" id="btn-hire-scout">Hire (£300k)</button>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <div class="font-bold">Head Physio</div>
+                            <div class="text-xs text-slate-400">Reduces injury duration by 50%</div>
+                        </div>
+                        <button onclick="game.hireStaff('physio')" class="bg-blue-600 text-xs px-3 py-1 rounded hover:bg-blue-500" id="btn-hire-physio">Hire (£400k)</button>
+                    </div>
+                </div>
+             </div>
+        </div>
+
+        <!-- VIEW: TRANSFER -->
+        <div id="view-transfer" class="hidden space-y-4">
+            <div class="flex justify-between items-center">
+                <h2 class="text-xl font-bold">Transfer Market</h2>
+                <span class="text-xs bg-green-600 px-2 py-1 rounded text-white">Window Open</span>
+            </div>
+            <div id="transfer-list" class="space-y-2"></div>
+        </div>
+
+    </main>
+
+    <!-- BOTTOM NAV -->
+    <nav class="bg-slate-900 border-t border-slate-700 fixed bottom-0 w-full flex justify-around items-center h-16 text-xs z-30">
+        <button onclick="ui.navigate('dashboard')" class="nav-btn active flex flex-col items-center gap-1 p-2 text-blue-400 w-1/5">
+            <i class="fas fa-home text-lg"></i><span>Home</span>
+        </button>
+        <button onclick="ui.navigate('squad')" class="nav-btn flex flex-col items-center gap-1 p-2 text-slate-400 w-1/5 hover:text-white">
+            <i class="fas fa-shirt text-lg"></i><span>Squad</span>
+        </button>
+        <button onclick="ui.navigate('league')" class="nav-btn flex flex-col items-center gap-1 p-2 text-slate-400 w-1/5 hover:text-white">
+            <i class="fas fa-trophy text-lg"></i><span>League</span>
+        </button>
+        <button onclick="ui.navigate('transfer')" class="nav-btn flex flex-col items-center gap-1 p-2 text-slate-400 w-1/5 hover:text-white">
+            <i class="fas fa-exchange-alt text-lg"></i><span>Market</span>
+        </button>
+        <button onclick="ui.navigate('office')" class="nav-btn flex flex-col items-center gap-1 p-2 text-slate-400 w-1/5 hover:text-white">
+            <i class="fas fa-briefcase text-lg"></i><span>Office</span>
+        </button>
+    </nav>
+
+    <!-- NEGOTIATION MODAL (Feature 6) -->
+    <div id="negotiation-modal" class="modal fixed inset-0 z-50 hidden flex flex-col items-center justify-center p-4">
+        <div class="bg-slate-800 w-full max-w-md rounded-xl shadow-2xl border border-slate-600 p-6">
+            <h2 class="text-xl font-bold mb-4 border-b border-slate-700 pb-2">Contract Negotiation</h2>
+            <div class="flex items-center gap-4 mb-6">
+                <div class="w-12 h-12 bg-slate-600 rounded-full flex items-center justify-center font-bold" id="neg-player-pos">ST</div>
+                <div>
+                    <div class="font-bold text-lg" id="neg-player-name">Player Name</div>
+                    <div class="text-sm text-slate-400">Agent: <span id="neg-agent-mood">Patient</span></div>
+                </div>
+            </div>
+            
+            <div class="bg-slate-900 p-4 rounded mb-4">
+                <div class="text-sm text-slate-400 mb-1">Player Demands</div>
+                <div class="flex justify-between items-center">
+                    <span>Weekly Wage:</span>
+                    <span class="font-bold text-yellow-400" id="neg-demand-wage">£100,000</span>
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label class="text-xs text-slate-400 block mb-1">Your Offer</label>
+                <input type="range" id="neg-offer-slider" class="w-full mb-2 accent-blue-500" min="1" max="100">
+                <div class="flex justify-between font-bold text-lg">
+                    <span>£<span id="neg-offer-display">0</span></span>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <button onclick="ui.closeNegotiation()" class="bg-red-600/20 text-red-400 py-2 rounded font-bold border border-red-600/50">Walk Away</button>
+                <button onclick="game.submitOffer()" class="bg-green-600 hover:bg-green-500 text-white py-2 rounded font-bold">Submit Offer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MATCH MODAL -->
+    <div id="match-modal" class="modal fixed inset-0 z-50 hidden flex flex-col items-center justify-center p-4">
+        <div class="bg-slate-800 w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden border border-slate-600">
+            <div class="bg-slate-900 p-4 text-center border-b border-slate-700">
+                <h2 class="font-bold text-lg text-white" id="match-title">Matchday</h2>
+                <div class="text-blue-400 text-sm" id="match-timer">00:00</div>
+            </div>
+            
+            <div class="p-6 flex justify-between items-center">
+                <div class="text-center w-1/3">
+                    <div class="text-3xl font-bold" id="modal-home-score">0</div>
+                    <div class="text-sm text-slate-400 mt-1" id="modal-home-name">Home</div>
+                </div>
+                <div class="text-center w-1/3">
+                    <div class="text-xs bg-slate-700 px-2 py-1 rounded mb-2">Possession</div>
+                    <div class="w-full h-2 bg-slate-700 rounded-full overflow-hidden flex">
+                        <div id="poss-bar-home" class="bg-blue-500 h-full" style="width: 50%"></div>
+                        <div id="poss-bar-away" class="bg-red-500 h-full" style="width: 50%"></div>
+                    </div>
+                </div>
+                <div class="text-center w-1/3">
+                    <div class="text-3xl font-bold" id="modal-away-score">0</div>
+                    <div class="text-sm text-slate-400 mt-1" id="modal-away-name">Away</div>
+                </div>
+            </div>
+
+            <div class="h-40 overflow-y-auto bg-slate-900/50 p-4 text-sm space-y-2 border-y border-slate-700" id="match-feed"></div>
+
+            <div class="p-4">
+                <button id="close-match-btn" onclick="ui.closeMatchModal()" class="w-full bg-slate-700 text-slate-500 py-3 rounded-lg font-bold cursor-not-allowed" disabled>Match in Progress...</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. DATA & CONFIGURATION ---
+        const LEAGUES_DATA = {
+            "Premier League": {
+                country: "England", tier: 1, reputation: 95, currency: "GBP", club_count: 20,
+                registration_rules: { max_squad_size: 25, min_homegrown: 8, work_permit_required: true },
+                match_sub_rules: { bench_limit: 9, subs_allowed: 5 },
+                fixture_schedule: { season_start: "2025-08-10", season_end: "2026-05-18", rounds: 38 },
+                tv_distribution: { equal_share: 0.5, merit: 0.25, facility: 0.25 },
+                prize_money_model: { type: "descending_linear", top: 60000000, bottom: 3000000 },
+                clubs: [] // Will be populated
+            }
+        };
+
+        const formatMoney = (amount) => {
+            return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP', maximumSignificantDigits: 3 }).format(amount);
+        };
+
+        // --- 2. UNIVERSE GENERATOR ---
+        const TEAM_NAMES = [
+            "Arsenal", "Aston Villa", "Bournemouth", "Brentford", "Brighton", "Chelsea", "Crystal Palace",
+            "Everton", "Fulham", "Ipswich Town", "Leicester City", "Liverpool", "Man Utd",
+            "Newcastle", "Nottm Forest", "Southampton", "Tottenham", "West Ham", "Wolves"
+        ];
+        const POSITIONS = ["GK", "CB", "LB", "RB", "CDM", "CM", "CAM", "LW", "RW", "ST"];
+
+        function generateRandomPlayer(id, roleStrength, teamRep) {
+            const pos = POSITIONS[Math.floor(Math.random() * POSITIONS.length)];
+            let baseOv = teamRep - 10 + Math.floor(Math.random() * 15); 
+            if(roleStrength === 'star') baseOv += 5;
+            if(roleStrength === 'prospect') baseOv -= 10;
+            baseOv = Math.min(94, Math.max(55, baseOv));
+            
+            return {
+                id: id,
+                name: `Player ${id}`,
+                position: pos,
+                age: 17 + Math.floor(Math.random() * 18),
+                overall: baseOv,
+                potential: Math.min(99, baseOv + Math.floor(Math.random() * 10)),
+                market_value: baseOv * 1000000 * (Math.random() + 0.5),
+                salary: baseOv * 1500,
+                morale: 80,
+                fitness: 100,
+                goals: 0, // Feature 9
+                clean_sheets: 0, // Feature 9
+                form: 60 + Math.floor(Math.random() * 30),
+                attributes: { pace: 60, shooting: 60, passing: 60, defense: 60 }, // Simplified
+            };
+        }
+
+        function initUniverse() {
+            const league = LEAGUES_DATA["Premier League"];
+            // User Club
+            const userClub = {
+                id: 1, name: "Man City", reputation: 95, budget: 150000000, wage_budget: 4500000,
+                played: 0, wins: 0, draws: 0, losses: 0, gf: 0, ga: 0, pts: 0, form: [],
+                staff: { coach: false, scout: false, physio: false }, // Feature 4
+                players: [
+                    { id: 101, name: "Erling Haaland", position: "ST", age: 25, overall: 92, potential: 95, salary: 350000, market_value: 220000000, goals: 0, clean_sheets:0, fitness: 100, morale: 95 },
+                    { id: 102, name: "Kevin De Bruyne", position: "CM", age: 33, overall: 91, potential: 91, salary: 350000, market_value: 80000000, goals: 0, clean_sheets:0, fitness: 100, morale: 90 },
+                    { id: 103, name: "Phil Foden", position: "RW", age: 25, overall: 89, potential: 94, salary: 225000, market_value: 150000000, goals: 0, clean_sheets:0, fitness: 100, morale: 92 },
+                    { id: 104, name: "Ruben Dias", position: "CB", age: 27, overall: 89, potential: 91, salary: 200000, market_value: 100000000, goals: 0, clean_sheets:0, fitness: 100, morale: 90 },
+                    { id: 105, name: "Ederson", position: "GK", age: 31, overall: 88, potential: 89, salary: 180000, market_value: 70000000, goals: 0, clean_sheets:0, fitness: 100, morale: 90 },
+                ]
+            };
+            for(let i=0; i<17; i++) userClub.players.push(generateRandomPlayer(110+i, 'rotation', 95));
+            league.clubs.push(userClub);
+
+            // AI Clubs
+            let pid = 2000;
+            TEAM_NAMES.forEach((name, idx) => {
+                const rep = 70 + Math.floor(Math.random() * 20); 
+                const club = {
+                    id: idx + 2, name: name, reputation: rep, budget: rep * 1000000, wage_budget: rep * 30000,
+                    played: 0, wins: 0, draws: 0, losses: 0, gf: 0, ga: 0, pts: 0, form: [],
+                    players: []
+                };
+                for(let k=0; k<22; k++) club.players.push(generateRandomPlayer(pid++, 'rotation', rep));
+                league.clubs.push(club);
+            });
+        }
+
+        // --- 3. GAME ENGINE ---
+        class GameState {
+            constructor() {
+                initUniverse();
+                this.date = new Date("2025-08-10");
+                this.league = LEAGUES_DATA["Premier League"];
+                this.userClubId = 1;
+                this.schedule = this.generateSchedule();
+                this.transferMarket = this.generateTransferMarket();
+                this.currentWeek = 0;
+                this.news = [{ text: "Welcome to Man City! The board expects a title challenge.", type: "info" }];
+                this.boardConfidence = 95; // Feature 10
+                this.negotiationTarget = null; // Feature 6
+            }
+
+            getUserClub() { return this.league.clubs.find(c => c.id === this.userClubId); }
+
+            generateSchedule() {
+                // Generate League Fixtures (38 rounds)
+                const clubs = this.league.clubs;
+                const schedule = [];
+                
+                // Simple round-robin generator
+                for(let r=1; r<=38; r++) {
+                    const roundMatches = [];
+                    const shuffled = [...clubs].sort(() => 0.5 - Math.random());
+                    for(let i=0; i<shuffled.length; i+=2) {
+                        roundMatches.push({
+                            type: "League",
+                            home: shuffled[i].id,
+                            away: shuffled[i+1].id,
+                            played: false, scoreHome: 0, scoreAway: 0
+                        });
+                    }
+                    schedule.push(roundMatches);
+                }
+
+                // Feature 7: Insert Cup Rounds (Simple Cup Model)
+                // Insert cup rounds at week 5, 10, 15, 20
+                const cupWeeks = [4, 9, 14, 19]; 
+                cupWeeks.forEach((weekIndex, i) => {
+                    if(weekIndex < schedule.length) {
+                        // For simplicity, Cup is just a random match for the user against an AI team
+                        // In a full version, we'd track the bracket.
+                        const cupMatch = {
+                            type: "Cup",
+                            roundName: i === 3 ? "Final" : `Round ${i+1}`,
+                            home: this.userClubId,
+                            away: clubs[Math.floor(Math.random() * clubs.length)].id === this.userClubId ? clubs[1].id : clubs[Math.floor(Math.random() * clubs.length)].id,
+                            played: false, scoreHome: 0, scoreAway: 0
+                        };
+                        // Add to the schedule array as a separate "week" or append? 
+                        // Let's splice it in as a new week to extend season
+                        schedule.splice(weekIndex, 0, [cupMatch]); 
+                    }
+                });
+
+                return schedule;
+            }
+
+            generateTransferMarket() {
+                const market = [];
+                for(let i=0; i<40; i++) market.push(generateRandomPlayer(9000+i, 'star', 85));
+                return market;
+            }
+
+            addNews(text, type="info") {
+                this.news.unshift({ text, type }); // Newest first
+                if(this.news.length > 20) this.news.pop();
+            }
+
+            // Feature 4: Staff Hiring
+            hireStaff(role) {
+                const club = this.getUserClub();
+                const costs = { coach: 500000, scout: 300000, physio: 400000 };
+                
+                if(club.staff[role]) return alert("You already have this staff member.");
+                if(club.budget < costs[role]) return alert("Insufficient funds.");
+
+                club.budget -= costs[role];
+                club.staff[role] = true;
+                this.addNews(`We have hired a new ${role === 'coach' ? 'Head Coach' : role === 'physio' ? 'Head Physio' : 'Chief Scout'}.`, "good");
+                ui.renderOffice();
+                ui.renderDashboard();
+            }
+
+            // Feature 6: Negotiation Init
+            startNegotiation(playerId) {
+                const player = this.transferMarket.find(p => p.id === playerId);
+                if(!player) return;
+                
+                const club = this.getUserClub();
+                if(club.budget < player.market_value) return alert("Cannot afford transfer fee.");
+
+                this.negotiationTarget = { 
+                    player: player, 
+                    patience: 3, 
+                    baseWage: player.salary * 1.2,
+                    currentOffer: 0 
+                };
+                
+                ui.openNegotiationModal(player);
+            }
+
+            submitOffer() {
+                if(!this.negotiationTarget) return;
+                
+                const offer = parseInt(document.getElementById('neg-offer-display').innerText.replace(/,/g, ''));
+                const target = this.negotiationTarget;
+                const club = this.getUserClub();
+
+                // Simple logic
+                if(offer >= target.baseWage) {
+                    // Success
+                    club.budget -= target.player.market_value;
+                    target.player.salary = offer;
+                    club.players.push(target.player);
+                    // Remove from market
+                    this.transferMarket = this.transferMarket.filter(p => p.id !== target.player.id);
+                    
+                    ui.closeNegotiation();
+                    this.addNews(`Signed ${target.player.name} for ${formatMoney(target.player.market_value)}!`, "good");
+                    ui.renderDashboard();
+                    ui.renderSquad();
+                    ui.renderTransferMarket();
+                } else {
+                    // Fail
+                    target.patience--;
+                    if(target.patience <= 0) {
+                        alert("Talks collapsed. The agent walked away.");
+                        ui.closeNegotiation();
+                    } else {
+                        document.getElementById('neg-agent-mood').innerText = "Annoyed";
+                        document.getElementById('neg-agent-mood').className = "text-red-400 font-bold";
+                        alert("Offer rejected. The agent is losing patience.");
+                    }
+                }
+            }
+
+            calculateTeamStrength(clubId, isHome) {
+                const club = this.league.clubs.find(c => c.id === clubId);
+                const top11 = [...club.players].sort((a,b) => b.overall - a.overall).slice(0, 11);
+                let strength = top11.reduce((acc, p) => acc + p.overall, 0) / 11;
+                
+                if(isHome) strength += 3;
+                // Feature 4: Coach Bonus
+                if(club.staff && club.staff.coach) strength += 2;
+                
+                return strength;
+            }
+
+            simMatch() {
+                if(this.currentWeek >= this.schedule.length) {
+                    this.endSeason();
+                    return;
+                }
+                
+                const round = this.schedule[this.currentWeek];
+                let userMatch = null;
+
+                ui.openMatchModal();
+                document.getElementById('match-title').innerText = round[0].type === 'Cup' ? round[0].roundName : "Premier League";
+
+                round.forEach(match => {
+                    if(match.played) return; // Skip if somehow already played
+                    
+                    const hStr = this.calculateTeamStrength(match.home, true);
+                    const aStr = this.calculateTeamStrength(match.away, false);
+                    
+                    const diff = hStr - aStr;
+                    let hGoals = Math.max(0, Math.round((1.5 + (diff * 0.15)) + (Math.random() * 2 - 1)));
+                    let aGoals = Math.max(0, Math.round((1.0 - (diff * 0.15)) + (Math.random() * 2 - 1)));
+
+                    match.scoreHome = hGoals;
+                    match.scoreAway = aGoals;
+                    match.played = true;
+
+                    // Find clubs to update stats
+                    const homeClub = this.league.clubs.find(c => c.id === match.home);
+                    const awayClub = this.league.clubs.find(c => c.id === match.away);
+
+                    if(match.type === "League") {
+                        this.updateLeagueStats(homeClub, hGoals, aGoals);
+                        this.updateLeagueStats(awayClub, aGoals, hGoals);
+                    } else {
+                        // Cup Logic (Simplified)
+                        if(match.home === this.userClubId || match.away === this.userClubId) {
+                            if(match.home === this.userClubId && hGoals < aGoals) this.addNews(`Knocked out of Cup by ${awayClub.name}`, "bad");
+                            if(match.away === this.userClubId && aGoals < hGoals) this.addNews(`Knocked out of Cup by ${homeClub.name}`, "bad");
+                        }
+                    }
+
+                    // Feature 9: Player Stats (Randomly assign goals)
+                    this.assignPlayerStats(homeClub, hGoals, aGoals === 0);
+                    this.assignPlayerStats(awayClub, aGoals, hGoals === 0);
+
+                    if (match.home === this.userClubId || match.away === this.userClubId) {
+                        userMatch = match;
+                    }
+                });
+
+                if(userMatch) {
+                    this.animateMatch(userMatch);
+                    // Feature 10: Board Confidence Update
+                    const myScore = userMatch.home === this.userClubId ? userMatch.scoreHome : userMatch.scoreAway;
+                    const oppScore = userMatch.home === this.userClubId ? userMatch.scoreAway : userMatch.scoreHome;
+                    
+                    if(myScore > oppScore) this.boardConfidence = Math.min(100, this.boardConfidence + 2);
+                    else if(myScore < oppScore) this.boardConfidence -= 5;
+                    
+                    this.checkGameOver();
+                } else {
+                    // If user has a bye or knocked out of cup, just close modal
+                     ui.closeMatchModal();
+                     ui.renderDashboard();
+                }
+
+                this.currentWeek++;
+                this.date.setDate(this.date.getDate() + 7);
+            }
+
+            assignPlayerStats(club, goalsScored, cleanSheet) {
+                // Assign goals to random attackers
+                const attackers = club.players.filter(p => ['ST', 'RW', 'LW', 'CAM'].includes(p.position));
+                const scorers = attackers.length > 0 ? attackers : club.players;
+                
+                for(let i=0; i<goalsScored; i++) {
+                    const scorer = scorers[Math.floor(Math.random() * scorers.length)];
+                    scorer.goals++;
+                }
+                // Assign clean sheet to GK
+                if(cleanSheet) {
+                    const gk = club.players.find(p => p.position === 'GK');
+                    if(gk) gk.clean_sheets++;
+                }
+            }
+
+            updateLeagueStats(club, gf, ga) {
+                club.played++;
+                club.gf += gf;
+                club.ga += ga;
+                if(gf > ga) { club.wins++; club.pts += 3; club.form.push('W'); }
+                else if(gf === ga) { club.draws++; club.pts += 1; club.form.push('D'); }
+                else { club.losses++; club.form.push('L'); }
+                
+                // Wages
+                club.budget -= club.wage_budget;
+            }
+
+            // Feature 10: Game Over
+            checkGameOver() {
+                if(this.boardConfidence < 20) {
+                    alert("YOU HAVE BEEN SACKED!\nThe board has lost faith in your management.\n\nGame Over.");
+                    location.reload();
+                }
+                ui.renderOffice();
+            }
+
+            // Feature 8: End Season Growth/Decay
+            endSeason() {
+                alert("Season Finished! Processing Player Growth & Decay...");
+                
+                this.league.clubs.forEach(club => {
+                    club.players.forEach(p => {
+                        // Growth
+                        if(p.age < 24) {
+                            const growth = Math.floor((p.potential - p.overall) * 0.3);
+                            if(growth > 0) p.overall += growth;
+                        }
+                        // Decay
+                        if(p.age > 30) {
+                            p.overall -= 1;
+                            p.attributes.pace -= 2;
+                        }
+                        p.age++;
+                        // Reset stats
+                        p.goals = 0;
+                        p.clean_sheets = 0;
+                    });
+                    // Reset Club Stats
+                    club.played = 0; club.pts = 0; club.wins = 0; club.draws = 0; club.losses = 0;
+                    club.gf = 0; club.ga = 0; club.form = [];
+                });
+
+                this.currentWeek = 0;
+                this.schedule = this.generateSchedule(); // New fixtures
+                this.addNews("New Season Started! Good luck.", "info");
+                ui.renderDashboard();
+            }
+
+            animateMatch(match) {
+                const homeClub = this.league.clubs.find(c => c.id === match.home);
+                const awayClub = this.league.clubs.find(c => c.id === match.away);
+                
+                document.getElementById('modal-home-name').innerText = homeClub.name;
+                document.getElementById('modal-away-name').innerText = awayClub.name;
+                
+                const feed = document.getElementById('match-feed');
+                feed.innerHTML = '';
+                
+                let currentMinute = 0;
+                const interval = setInterval(() => {
+                    currentMinute += 4; // Faster sim
+                    document.getElementById('match-timer').innerText = `${currentMinute}'`;
+                    
+                    // Random events just for visuals
+                    if(Math.random() > 0.8) {
+                        const p = document.createElement('div');
+                        p.className = "text-slate-400 italic";
+                        p.innerText = `${currentMinute}' Action in midfield...`;
+                        feed.prepend(p);
+                    }
+
+                    if(currentMinute >= 90) {
+                        clearInterval(interval);
+                        document.getElementById('match-timer').innerText = "FT";
+                        document.getElementById('modal-home-score').innerText = match.scoreHome;
+                        document.getElementById('modal-away-score').innerText = match.scoreAway;
+                        
+                        const resultDiv = document.createElement('div');
+                        resultDiv.className = "text-center font-bold text-white py-2 border-t border-slate-700 mt-2";
+                        resultDiv.innerText = `Result: ${match.scoreHome} - ${match.scoreAway}`;
+                        feed.prepend(resultDiv);
+
+                        const btn = document.getElementById('close-match-btn');
+                        btn.disabled = false;
+                        btn.innerText = "Continue";
+                        btn.classList.replace('bg-slate-700', 'bg-blue-600');
+                        btn.classList.remove('cursor-not-allowed');
+                        
+                        ui.renderDashboard();
+                        ui.renderLeague();
+                    }
+                }, 50);
+            }
+        }
+
+        // --- 4. UI CONTROLLER ---
+        class UIController {
+            constructor() {
+                this.views = ['dashboard', 'squad', 'league', 'transfer', 'office'];
+            }
+
+            init() {
+                this.renderDashboard();
+                this.renderSquad();
+                this.renderLeague();
+                this.renderTransferMarket();
+                this.renderOffice();
+            }
+
+            navigate(viewName) {
+                this.views.forEach(v => document.getElementById(`view-${v}`).classList.add('hidden'));
+                document.getElementById(`view-${viewName}`).classList.remove('hidden');
+                
+                document.querySelectorAll('.nav-btn').forEach(b => {
+                    b.classList.remove('text-blue-400', 'active');
+                    b.classList.add('text-slate-400');
+                });
+                // Hacky way to highlight current button
+                const btn = document.querySelector(`button[onclick="ui.navigate('${viewName}')"]`);
+                if(btn) {
+                    btn.classList.add('text-blue-400', 'active');
+                    btn.classList.remove('text-slate-400');
+                }
+            }
+
+            renderDashboard() {
+                const club = game.getUserClub();
+                document.getElementById('budget-display').innerText = formatMoney(club.budget);
+                document.getElementById('board-trust-top').innerText = game.boardConfidence + "%";
+                document.getElementById('current-date').innerText = game.date.toDateString();
+
+                // Fixture
+                if (game.currentWeek < game.schedule.length) {
+                    const round = game.schedule[game.currentWeek];
+                    const match = round.find(m => m.home === club.id || m.away === club.id);
+                    
+                    if(match) {
+                        const opponentId = match.home === club.id ? match.away : match.home;
+                        const opponent = game.league.clubs.find(c => c.id === opponentId);
+                        document.getElementById('home-team-name').innerText = match.home === club.id ? club.name : opponent.name;
+                        document.getElementById('away-team-name').innerText = match.away === club.id ? club.name : opponent.name;
+                        document.getElementById('fixture-type-label').innerText = match.type === "Cup" ? `Cup - ${match.roundName}` : "Premier League";
+                    } else {
+                        // Bye week
+                        document.getElementById('home-team-name').innerText = "No Match";
+                        document.getElementById('away-team-name').innerText = "-";
+                    }
+                }
+
+                // News Feed
+                const newsDiv = document.getElementById('news-feed');
+                newsDiv.innerHTML = '';
+                game.news.forEach(n => {
+                    const div = document.createElement('div');
+                    div.className = `news-item p-2 rounded ${n.type === 'good' ? 'bg-green-900/30 text-green-200' : n.type === 'bad' ? 'bg-red-900/30 text-red-200' : 'bg-slate-800 text-slate-300'}`;
+                    div.innerHTML = `<i class="fas ${n.type === 'good' ? 'fa-check-circle' : n.type === 'bad' ? 'fa-exclamation-circle' : 'fa-info-circle'} mr-2"></i> ${n.text}`;
+                    newsDiv.appendChild(div);
+                });
+
+                // Mini Table
+                const sortedClubs = [...game.league.clubs].sort((a,b) => b.pts - a.pts || (b.gf-b.ga) - (a.gf-a.ga));
+                const tbody = document.getElementById('dashboard-table-body');
+                tbody.innerHTML = '';
+                sortedClubs.slice(0, 5).forEach((c, i) => {
+                    const tr = document.createElement('tr');
+                    tr.className = c.id === club.id ? "bg-blue-900/30 font-bold" : "border-b border-slate-800";
+                    tr.innerHTML = `<td class="p-1">${i+1}</td><td class="p-1 truncate max-w-[100px]">${c.name}</td><td class="p-1 text-right">${c.pts}</td>`;
+                    tbody.appendChild(tr);
+                });
+            }
+
+            renderOffice() {
+                const conf = game.boardConfidence;
+                document.getElementById('office-confidence').innerText = conf + "%";
+                document.getElementById('confidence-bar').style.width = conf + "%";
+                document.getElementById('confidence-bar').className = `h-2 rounded-full ${conf > 50 ? 'bg-green-500' : conf > 20 ? 'bg-yellow-500' : 'bg-red-500'}`;
+                
+                const txt = document.getElementById('confidence-text');
+                if(conf > 80) { txt.innerText = "Ecstatic"; txt.className = "text-sm mb-1 text-green-400"; }
+                else if(conf > 50) { txt.innerText = "Secure"; txt.className = "text-sm mb-1 text-blue-400"; }
+                else if(conf > 20) { txt.innerText = "Insecure"; txt.className = "text-sm mb-1 text-yellow-400"; }
+                else { txt.innerText = "Crisis"; txt.className = "text-sm mb-1 text-red-500 font-bold"; }
+
+                const club = game.getUserClub();
+                if(club.staff.coach) document.getElementById('btn-hire-coach').innerText = "Hired";
+                if(club.staff.scout) document.getElementById('btn-hire-scout').innerText = "Hired";
+                if(club.staff.physio) document.getElementById('btn-hire-physio').innerText = "Hired";
+            }
+
+            renderSquad() {
+                const club = game.getUserClub();
+                const startList = document.getElementById('starting-xi-list');
+                const benchList = document.getElementById('bench-list');
+                startList.innerHTML = ''; benchList.innerHTML = '';
+
+                club.players.sort((a,b) => b.overall - a.overall).forEach((p, i) => {
+                    const el = document.createElement('div');
+                    el.className = "player-row flex justify-between items-center p-2 rounded bg-slate-800/50 border border-slate-700";
+                    el.innerHTML = `
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-full bg-slate-600 flex items-center justify-center text-xs font-bold">${p.position}</div>
+                            <div>
+                                <div class="font-bold text-sm">${p.name}</div>
+                                <div class="text-xs text-slate-400">Gls: ${p.goals}</div>
+                            </div>
+                        </div>
+                        <div class="text-right text-blue-400 font-bold text-xl">${p.overall}</div>
+                    `;
+                    if(i < 11) startList.appendChild(el);
+                    else benchList.appendChild(el);
+                });
+            }
+
+            renderLeague() {
+                const sortedClubs = [...game.league.clubs].sort((a,b) => b.pts - a.pts || (b.gf-b.ga) - (a.gf-a.ga));
+                const tbody = document.getElementById('full-league-table');
+                tbody.innerHTML = '';
+                
+                sortedClubs.forEach((c, i) => {
+                    const tr = document.createElement('tr');
+                    tr.className = c.id === game.userClubId ? "bg-blue-900/20 text-white" : "text-slate-300 hover:bg-slate-800";
+                    tr.innerHTML = `<td class="p-3">${i+1}</td><td class="p-3 font-bold">${c.name}</td><td class="p-3 text-center">${c.played}</td><td class="p-3 text-center">${c.gf - c.ga}</td><td class="p-3 text-center font-bold text-white">${c.pts}</td>`;
+                    tbody.appendChild(tr);
+                });
+
+                // Top Scorers (Feature 9)
+                let allPlayers = [];
+                game.league.clubs.forEach(c => allPlayers.push(...c.players.map(p => ({...p, club: c.name}))));
+                allPlayers.sort((a,b) => b.goals - a.goals);
+                
+                const scorersBody = document.getElementById('top-scorers-table');
+                scorersBody.innerHTML = '';
+                allPlayers.slice(0, 10).forEach(p => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `<td class="p-3">${p.name}</td><td class="p-3 text-slate-400">${p.club}</td><td class="p-3 text-right font-bold text-yellow-400">${p.goals}</td>`;
+                    scorersBody.appendChild(tr);
+                });
+            }
+
+            toggleLeagueTab(tab) {
+                document.getElementById('tab-league-table').classList.add('hidden');
+                document.getElementById('tab-league-stats').classList.add('hidden');
+                document.getElementById('tab-btn-table').className = "text-slate-400 hover:text-white";
+                document.getElementById('tab-btn-stats').className = "text-slate-400 hover:text-white";
+
+                document.getElementById(`tab-league-${tab}`).classList.remove('hidden');
+                document.getElementById(`tab-btn-${tab}`).className = "font-bold text-white border-b-2 border-blue-500";
+            }
+
+            renderTransferMarket() {
+                const list = document.getElementById('transfer-list');
+                list.innerHTML = '';
+                game.transferMarket.forEach(p => {
+                    const el = document.createElement('div');
+                    el.className = "bg-slate-800 p-3 rounded flex justify-between items-center border border-slate-700";
+                    // Feature 4: Scout reveals info
+                    const scoutHired = game.getUserClub().staff.scout;
+                    const ovrDisplay = scoutHired ? p.overall : "??";
+                    
+                    el.innerHTML = `
+                        <div class="flex gap-3 items-center">
+                            <div class="bg-slate-700 px-2 py-1 rounded text-xs font-bold">${p.position}</div>
+                            <div>
+                                <div class="font-bold">${p.name}</div>
+                                <div class="text-xs text-slate-400">Age: ${p.age} | OVR: ${ovrDisplay}</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <div class="text-right">
+                                <div class="text-green-400 font-bold">${formatMoney(p.market_value)}</div>
+                            </div>
+                            <button onclick="game.startNegotiation(${p.id})" class="bg-green-600 hover:bg-green-500 text-white px-3 py-1 rounded text-xs font-bold">BUY</button>
+                        </div>
+                    `;
+                    list.appendChild(el);
+                });
+            }
+
+            openNegotiationModal(player) {
+                document.getElementById('negotiation-modal').classList.remove('hidden');
+                document.getElementById('neg-player-name').innerText = player.name;
+                document.getElementById('neg-player-pos').innerText = player.position;
+                
+                // Random Wage Demand (Feature 6)
+                const demand = Math.round(player.salary * (1.2 + Math.random() * 0.3));
+                document.getElementById('neg-demand-wage').innerText = formatMoney(demand);
+                
+                // Slider setup
+                const slider = document.getElementById('neg-offer-slider');
+                slider.min = Math.round(player.salary * 0.8);
+                slider.max = Math.round(player.salary * 2);
+                slider.value = Math.round(player.salary);
+                
+                // Update display on slide
+                slider.oninput = function() {
+                    document.getElementById('neg-offer-display').innerText = new Intl.NumberFormat('en-GB').format(this.value);
+                }
+                slider.oninput(); // init
+            }
+
+            closeNegotiation() {
+                document.getElementById('negotiation-modal').classList.add('hidden');
+            }
+
+            openMatchModal() {
+                document.getElementById('match-modal').classList.remove('hidden');
+                const btn = document.getElementById('close-match-btn');
+                btn.disabled = true;
+                btn.innerText = "Match in Progress...";
+                btn.classList.replace('bg-blue-600', 'bg-slate-700');
+                btn.classList.add('cursor-not-allowed');
+            }
+            
+            closeMatchModal() { document.getElementById('match-modal').classList.add('hidden'); }
+        }
+
+        // --- 5. START ---
+        const game = new GameState();
+        const ui = new UIController();
+        ui.init();
+
+    </script>
+</body>
+</html>
